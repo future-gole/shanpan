@@ -27,7 +27,7 @@ async function handleSubmit() {
 			password: form.password
 		})
 			const redirectPath = Array.isArray(route.query.redirect) ? route.query.redirect[0] : route.query.redirect
-			router.push(redirectPath || '/dashboard')
+			router.push(redirectPath || '/calendar')
 	} catch (error) {
 		const message = error?.response?.data?.message || '登录失败，请检查用户名或密码'
 		errorMessage.value = message
@@ -38,7 +38,7 @@ async function handleSubmit() {
 
 onMounted(() => {
 	if (isAuthenticated.value) {
-		router.replace('/dashboard')
+		router.replace('/calendar')
 	}
 })
 </script>

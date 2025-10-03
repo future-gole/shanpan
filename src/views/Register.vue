@@ -32,7 +32,7 @@ async function handleSubmit() {
 			username: form.username.trim(),
 			password: form.password
 		})
-		router.push('/dashboard')
+		router.push('/calendar')
 	} catch (error) {
 		const message = error?.response?.data?.message || '注册失败，请稍后再试'
 		errorMessage.value = message
@@ -49,7 +49,7 @@ const passwordTips = [
 
 onMounted(() => {
 	if (isAuthenticated.value) {
-		router.replace('/dashboard')
+		router.replace('/calendar')
 	}
 })
 </script>

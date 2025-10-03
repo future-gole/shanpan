@@ -1,7 +1,9 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { storeToRefs } from 'pinia';
 import AuthModal from '@/components/AuthModal.vue';
+import { useAuthStore } from '@/stores/counter';
 
 // 导入本地图片资源
 import girlLeft from '@/assets/girl.png';
@@ -36,6 +38,9 @@ const router = useRouter();
 const showAuthModal = ref(false);
 const authTab = ref('login');
 
+const authStore = useAuthStore();
+const { isAuthenticated } = storeToRefs(authStore);
+
 function syncAuthModalFromRoute() {
   const authQuery = Array.isArray(route.query.auth) ? route.query.auth[0] : route.query.auth;
   if (authQuery === 'login' || authQuery === 'register') {
@@ -57,6 +62,14 @@ function openAuth(tab = 'login') {
   const normalized = tab === 'register' ? 'register' : 'login';
   const newQuery = { ...route.query, auth: normalized };
   router.push({ path: '/', query: newQuery });
+}
+
+function goToCalendar() {
+  if (isAuthenticated.value) {
+    router.push({ name: 'calendar' });
+  } else {
+    openAuth('login');
+  }
 }
 
 watch(
@@ -189,11 +202,6 @@ onMounted(() => {
           <div class="pie-chart"></div>
           <p class="text-sm text-gray-500 mt-2">大家的心情分布</p>
         </div>
-        <!-- <div class="w-full md:w-auto mt-6 md:mt-0 flex justify-center">
-            <button class="border border-orange-400 text-orange-400 font-bold py-2 px-6 rounded-lg hover:bg-orange-400 hover:text-white transition">
-              看看大家怎么说
-            </button>
-        </div> -->
       </div>
     </div>
 

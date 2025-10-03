@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/counter'
 
-const DashboardView = () => import('@/views/Dashboard.vue')
+const CalendarView = () => import('@/views/Calendar.vue')
 const HomePage = () => import('@/views/HomePage.vue')
 
 const router = createRouter({
@@ -24,9 +24,9 @@ const router = createRouter({
       redirect: (to) => ({ path: '/', query: { ...to.query, auth: 'register' } })
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: DashboardView,
+      path: '/calendar',
+      name: 'calendar',
+      component: CalendarView,
       meta: { requiresAuth: true }
     }
   ]
@@ -39,7 +39,7 @@ router.beforeEach((to) => {
     return { path: '/', query: { auth: 'login', redirect: to.fullPath } }
   }
   if ((to.name === 'login' || to.name === 'register') && isAuthenticated.value) {
-    return { name: 'dashboard' }
+    return { name: 'calendar' }
   }
   return true
 })

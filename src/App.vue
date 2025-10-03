@@ -10,10 +10,7 @@ const route = useRoute()
 
 const { user, isAuthenticated } = storeToRefs(authStore)
 
-// 需要动态显示的导航项
-const authNavigation = [
-  { label: '每日打卡', to: '/dashboard', authOnly: true },
-]
+
 
 // 计算属性，只返回在当前认证状态下应该可见的链接
 const visibleAuthNavigation = computed(() =>
@@ -48,7 +45,7 @@ function openAuth(tab = 'login') {
       <div class="container mx-auto px-6 py-3 flex justify-between items-center">
         <!-- Logo -->
         <RouterLink to="/" class="text-2xl font-bold text-orange-400">
-          <i class="fas fa-puzzle-piece"></i> 童心世界
+          <i class="fas fa-puzzle-piece"></i> 坚毅沙盘
         </RouterLink>
         
         <!-- 导航链接 -->
@@ -60,16 +57,6 @@ function openAuth(tab = 'login') {
           <RouterLink to="/calendar" class="hover:text-orange-400">坚毅台历</RouterLink>
           <a href="https://mp.weixin.qq.com/s/YEIsz7BDBLCdSIodpYd89Q" target="_blank" rel="noopener noreferrer" class="hover:text-orange-400">关于我们</a>
           
-          <!-- 动态认证链接 -->
-          <RouterLink
-            v-for="item in visibleAuthNavigation"
-            :key="item.to"
-            :to="item.to"
-            class="hover:text-orange-400"
-            active-class="text-orange-500 font-semibold"
-          >
-            {{ item.label }}
-          </RouterLink>
         </nav>
         
         <!-- 右侧：登录状态判断 -->
