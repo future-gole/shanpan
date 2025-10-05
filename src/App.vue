@@ -77,7 +77,6 @@ function openAuth(tab = 'login') {
           <div v-else class="flex items-center space-x-4">
              <div class="text-sm text-slate-600 text-right">
               <p class="font-semibold text-slate-800">{{ user?.username }}</p>
-              <p class="text-xs">总积分：<span class="font-medium text-orange-500">{{ user?.totalPoints ?? 0 }}</span></p>
             </div>
             <button
               type="button"

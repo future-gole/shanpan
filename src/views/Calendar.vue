@@ -16,6 +16,10 @@ const currentYear = ref(today.getFullYear())
 const currentMonth = ref(today.getMonth())
 const selectedDate = ref(formatISODate(today))
 
+const dailyGoal = ref('')
+const reflection = ref('')
+const isSubmitting = ref(false)
+
 const weekdayLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
 const calendarDays = computed(() => {
@@ -27,12 +31,22 @@ const calendarDays = computed(() => {
     const date = new Date(startDate)
     date.setDate(startDate.getDate() + i)
     const iso = formatISODate(date)
+    const isPast = date < today
+    const isFuture = date > today
+    const hasCheckIn = Boolean(checkInsMap.value[iso])
+    let status = 'not-checked-in'
+    if (isFuture) {
+      status = 'future'
+    } else if (hasCheckIn) {
+      status = 'checked-in'
+    }
     days.push({
       iso,
       label: date.getDate(),
       inCurrentMonth: date.getMonth() === currentMonth.value,
       isToday: iso === formatISODate(today),
-      hasCheckIn: Boolean(checkInsMap.value[iso]),
+      hasCheckIn,
+      status,
     })
   }
   return days
@@ -46,6 +60,11 @@ const checkInsMap = computed(() => {
 })
 
 const selectedCheckIn = computed(() => checkInsMap.value[selectedDate.value] || null)
+
+const isTodayCheckedIn = computed(() => {
+  const todayStr = formatISODate(today)
+  return Boolean(checkInsMap.value[todayStr])
+})
 
 const monthlyCheckIns = computed(() => {
   return checkIns.value.filter((item) => {
@@ -150,6 +169,33 @@ function goToNextMonth() {
   }
 }
 
+async function handleCheckIn() {
+  if (!user.value?.userId || !dailyGoal.value.trim() || !reflection.value.trim()) {
+    errorMessage.value = '请填写今日任务和反思'
+    return
+  }
+
+  isSubmitting.value = true
+  errorMessage.value = ''
+  try {
+    await checkinApi.checkin({
+      userId: user.value.userId,
+      dailyGoal: dailyGoal.value.trim(),
+      reflection: reflection.value.trim()
+    })
+    // 刷新数据
+    await fetchCheckIns()
+    // 清空表单
+    dailyGoal.value = ''
+    reflection.value = ''
+  } catch (error) {
+    const message = error?.response?.data?.message || '打卡失败，请稍后重试'
+    errorMessage.value = message
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
 function normalizeDateString(value) {
   if (!value) return value
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -205,10 +251,7 @@ onMounted(() => {
             <p class="text-6xl font-bold text-slate-800 tracking-tight">{{ selectedDateInfo.label }}</p>
             <p class="text-2xl font-medium text-slate-500 mt-1">{{ selectedDateInfo.weekday }}</p>
             <div class="border-l-4 border-emerald-400 pl-4 mt-10 text-slate-600 leading-relaxed text-sm">
-              <p v-if="selectedCheckIn?.reflection">
-                {{ selectedCheckIn.reflection }}
-              </p>
-              <p v-else>
+              <p>
                 以决心开启,用专注涤入,靠坚持抵达,铸就你的坚毅之路。
               </p>
             </div>
@@ -270,7 +313,7 @@ onMounted(() => {
 
         <div class="rounded-3xl bg-white shadow-lg p-6">
           <div class="flex items-center justify-between">
-            <h3 class="font-bold text-lg text-slate-800">我的沙盘日记</h3>
+            <h3 class="font-bold text-lg text-slate-800">日历</h3>
             <div class="flex items-center gap-4 text-sm text-slate-500">
               <button
                 type="button"
@@ -306,9 +349,11 @@ onMounted(() => {
                 class="mx-auto w-10 h-10 flex items-center justify-center rounded-full transition"
                 :class="[
                   day.iso === selectedDate ? 'bg-emerald-500 text-white shadow-lg' : '',
-                  day.inCurrentMonth ? 'text-slate-700' : 'text-slate-300',
-                  day.isToday && day.iso !== selectedDate ? 'ring-2 ring-emerald-200' : '',
-                  day.hasCheckIn && day.iso !== selectedDate ? 'border border-emerald-200' : ''
+                  day.status === 'checked-in' && day.iso !== selectedDate ? 'bg-emerald-100 text-emerald-700' : '',
+                  day.status === 'not-checked-in' && day.iso !== selectedDate ? 'bg-red-100 text-red-700' : '',
+                  day.status === 'future' && day.iso !== selectedDate ? 'bg-white text-slate-700' : '',
+                  day.inCurrentMonth ? '' : 'text-slate-300',
+                  day.isToday && day.iso !== selectedDate ? 'ring-2 ring-emerald-200' : ''
                 ]"
                 @click="handleSelectDay(day)"
                 :disabled="isLoading"
@@ -346,7 +391,7 @@ onMounted(() => {
             </div>
             <div class="flex flex-col items-center justify-center bg-rose-100 text-rose-800 p-4 rounded-2xl">
               <i class="fas fa-eye text-3xl"></i>
-              <span class="font-semibold mt-2 text-sm">>坚毅之星</span>
+              <span class="font-semibold mt-2 text-sm">坚毅之星</span>
             </div>
             <div class="flex flex-col items-center justify-center bg-indigo-100 text-indigo-800 p-4 rounded-2xl">
               <i class="fas fa-crown text-3xl"></i>
@@ -369,25 +414,58 @@ onMounted(() => {
             <div class="mt-6 space-y-4">
               <div>
                 <h4 class="font-semibold text-sm text-slate-700 mb-2">完成任务</h4>
-                <div class="bg-white/80 p-4 rounded-2xl flex items-center space-x-3">
+                <div v-if="isTodayCheckedIn" class="bg-white/80 p-4 rounded-2xl flex items-center space-x-3">
                   <span class="text-emerald-500 text-xl">
-                    <i :class="selectedCheckIn ? 'fas fa-check-circle' : 'far fa-circle'" />
+                    <i class="fas fa-check-circle"></i>
                   </span>
                   <div>
-                    <p class="font-semibold text-slate-800">{{ selectedCheckIn ? '今日打卡已完成' : '等待你的坚持' }}</p>
+                    <p class="font-semibold text-slate-800">今日打卡已完成</p>
                     <p class="text-xs text-slate-500">
-                      {{ selectedCheckIn?.dailyGoal || '设定一个今日的小目标，让冒险出发。' }}
+                      {{ checkInsMap[formatISODate(today)]?.dailyGoal || '设定一个今日的小目标，让冒险出发。' }}
                     </p>
                   </div>
+                </div>
+                <div v-else class="bg-white/80 p-4 rounded-2xl">
+                  <textarea
+                    v-model="dailyGoal"
+                    placeholder="设定一个今日的小目标，让冒险出发。"
+                    class="w-full p-2 border border-slate-200 rounded-lg text-sm resize-none"
+                    rows="2"
+                    :disabled="isSubmitting"
+                  ></textarea>
                 </div>
               </div>
 
               <div>
                 <h4 class="font-semibold text-sm text-slate-700 mb-2">心情记录</h4>
-                <div class="bg-white/80 p-4 rounded-2xl text-sm text-slate-600">
-                  <p v-if="selectedCheckIn?.reflection">{{ selectedCheckIn.reflection }}</p>
-                  <p v-else>用几句话记录现在的自己吧，未来会感谢今天的你。</p>
+                <div v-if="isTodayCheckedIn" class="bg-white/80 p-4 rounded-2xl text-sm text-slate-600">
+                  <p>{{ checkInsMap[formatISODate(today)]?.reflection || '用几句话记录现在的自己吧，未来会感谢今天的你。' }}</p>
                 </div>
+                <div v-else class="bg-white/80 p-4 rounded-2xl">
+                  <textarea
+                    v-model="reflection"
+                    placeholder="用几句话记录现在的自己吧，未来会感谢今天的你。"
+                    class="w-full p-2 border border-slate-200 rounded-lg text-sm resize-none"
+                    rows="3"
+                    :disabled="isSubmitting"
+                  ></textarea>
+                </div>
+              </div>
+
+              <div v-if="!isTodayCheckedIn" class="flex justify-center">
+                <button
+                  type="button"
+                  class="bg-emerald-500 text-white px-6 py-2 rounded-full font-semibold hover:bg-emerald-600 transition disabled:opacity-50"
+                  @click="handleCheckIn"
+                  :disabled="isSubmitting || !dailyGoal.trim() || !reflection.trim()"
+                >
+                  <i v-if="isSubmitting" class="fas fa-spinner fa-spin mr-2"></i>
+                  {{ isSubmitting ? '打卡中...' : '完成打卡' }}
+                </button>
+              </div>
+
+              <div v-if="errorMessage" class="text-sm text-red-500 bg-red-50 px-4 py-3 rounded-2xl">
+                {{ errorMessage }}
               </div>
             </div>
 
